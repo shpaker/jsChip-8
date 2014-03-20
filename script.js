@@ -1,3 +1,6 @@
+/*
+
+*/
 function draw(canvas, pixels) {
     'use strict';
     var i,

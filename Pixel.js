@@ -1,8 +1,11 @@
+/*
+    
+*/
 var Pixel = function () {
     "use strict";
     var active = false,
 		redraw = true;
-    // "Добавление" пиксела
+    // "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     this.add = function () {
         if (!active) {
             active = true;
@@ -13,7 +16,7 @@ var Pixel = function () {
             return false;
         }
     }
-    // "Удаление" пиксела
+    // "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     this.rem = function () {
         if (active) {
             active = false;
@@ -24,15 +27,15 @@ var Pixel = function () {
             return false;
         }
     }
-    // Пометить пиксель к отрисовке
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     this.draw = function () {
         redraw = false;
     }
-    // Проверка следует ли перерисовывать пиксел
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     this.isRedraw = function () {
         return redraw;
     }
-    // Активность пикселя
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     this.isActive = function () {
         return active;
     }

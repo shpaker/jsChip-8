@@ -1,3 +1,6 @@
+/*
+
+*/
 var JsChip8 = function () {
     'use strict';
 
