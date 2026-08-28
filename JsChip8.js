@@ -12,19 +12,21 @@ var JsChip8 = function () {
 		SP,
 		PC,
 		delayTimer,
-		soundTimer;
+		soundTimer,
+		keys;
 
     function initialization() {
         for (var i = 0, len = 64 * 32; i < len; i++)
             display[i] = new Pixel();
-        memory = new Uint8Array(4095);
-        stack = new Uint8Array(15);
+        memory = new Uint8Array(4096);
+        stack = new Uint16Array(16);
         rV = new Uint8Array(4095);
         rI = 0;
         SP = 0;
         PC = 0x200;
         delayTimer = 0;
         soundTimer = 0;
+        keys = new Uint8Array(16);
         memory.set([
             0xF0, 0x90, 0x90, 0x90, 0xF0,	// 0
             0x20, 0x60, 0x20, 0x20, 0x70,	// 1
@@ -105,6 +107,15 @@ var JsChip8 = function () {
         return display;
     }
 
+    this.tick = function () {
+        if (delayTimer > 0) delayTimer--;
+        if (soundTimer > 0) soundTimer--;
+    }
+
+    this.setKey = function (key, state) {
+        keys[key] = state ? 1 : 0;
+    }
+
 
     this.step = function () {
         var opcode = memory[PC] << 8 | memory[PC + 1];
@@ -133,6 +144,7 @@ var JsChip8 = function () {
                     }
                         break;
                 }
+                break;
             }
                 // 1nnn - JP addr
                 // Jump to location nnn.
@@ -208,14 +220,16 @@ var JsChip8 = function () {
                         // 8xy4 - ADD Vx, Vy
                         // Set Vx = Vx + Vy, set VF = carry.
                     case 0x4:
-                        rV[(opcode & 0x0F00) >> 8] += rV[(opcode & 0x00F0) >> 4];
-                        rV[0xF] = (rV[(opcode & 0x0F00) >> 8] > 255) ? 1 : 0;
+                        var sum = rV[(opcode & 0x0F00) >> 8] + rV[(opcode & 0x00F0) >> 4];
+                        rV[(opcode & 0x0F00) >> 8] = sum;
+                        rV[0xF] = (sum > 255) ? 1 : 0;
                         break;
                         // 8xy5 - SUB Vx, Vy
                         // Set Vx = Vx - Vy, set VF = NOT borrow.
                     case 0x5:
+                        var noBorrow = (rV[(opcode & 0x0F00) >> 8] >= rV[(opcode & 0x00f0) >> 4]) ? 1 : 0;
                         rV[(opcode & 0x0F00) >> 8] -= rV[(opcode & 0x00f0) >> 4];
-                        rV[0xF] = (rV[(opcode & 0x0F00) >> 8] > rV[(opcode & 0x00F0) >> 4]) ? 1 : 0;
+                        rV[0xF] = noBorrow;
                         break;
                         // 8xy6 - SHR Vx {, Vy}
                         // Set Vx = Vx SHR 1.
@@ -226,13 +240,13 @@ var JsChip8 = function () {
                         // 8xy7 - SUBN Vx, Vy
                         // Set Vx = Vy - Vx, set VF = NOT borrow.
                     case 0x7:
-                        regV[0xF] = (rV[(opcode & 0x00F0) >> 4] >= rV[(opcode & 0x0F00) >> 8]) ? 1 : 0;
+                        rV[0xF] = (rV[(opcode & 0x00F0) >> 4] >= rV[(opcode & 0x0F00) >> 8]) ? 1 : 0;
                         rV[(opcode & 0x0F00) >> 8] = rV[(opcode & 0x00F0) >> 4] - rV[(opcode & 0x0F00) >> 8];
                         break;
                         // 8xyE - SHL Vx {, Vy}
                         // Set Vx = Vx SHL 1.
                     case 0xe:
-                        /* ? */                 rV[0xF] = +(rV[1] & 0x01);
+                        rV[0xF] = (rV[(opcode & 0x0F00) >> 8] & 0x80) >> 7;
                         rV[(opcode & 0x0F00) >> 8] <<= 1;
                         break;
                     default: {
@@ -287,19 +301,15 @@ var JsChip8 = function () {
                 rV[0xF] = 0;
 
                 for (var iH = 0; iH < height; iH++) {
-                    for (var iW = width - 1; iW >= 0; iW--) {
-                        pos = (y + iH) * 64 + (x + iW);
-                        bit = sprite[iH] & 0x1;
-                        if ((sprite[iH] & 0x1) !== 0) {
-                            if (display[pos].isActive())
+                    for (var iW = 0; iW < width; iW++) {
+                        if ((sprite[iH] & (0x80 >> iW)) !== 0) {
+                            pos = ((y + iH) % 32) * 64 + ((x + iW) % 64);
+                            if (display[pos].isActive()) {
                                 rV[0xF] = 1;
-                            foo = display[pos].isActive() ^ true;
+                                display[pos].rem();
+                            }
+                            else display[pos].add();
                         }
-                        if (foo) {
-                            display[pos].add();
-                        }
-                        else display[pos].rem();
-                        sprite[iH] >>= 1;
                     }
                 }
 
@@ -353,17 +363,14 @@ break;
                     // Ex9E - SKP Vx
                     // Skip next instruction if key with the value of Vx is pressed.
                     case 0x9E:
-                        /*
-						
-						*/
+                        if (keys[rV[(opcode & 0x0F00) >> 8]])
+                            PC += 2;
                         break;
                         // ExA1 - SKNP Vx
                         // Skip next instruction if key with the value of Vx is not pressed.
                     case 0xA1:
-                        /*
-						
-						*/
-                        PC += 2;
+                        if (!keys[rV[(opcode & 0x0F00) >> 8]])
+                            PC += 2;
                         break;
                 }
                 break;
@@ -378,9 +385,16 @@ break;
                         // Fx0A - LD Vx, K
                         // Wait for a key press, store the value of the key in Vx.
                     case 0x0a:
-                        /*
-						
-						*/
+                        var pressed = false;
+                        for (var k = 0; k < 16; k++) {
+                            if (keys[k]) {
+                                rV[(opcode & 0x0F00) >> 8] = k;
+                                pressed = true;
+                                break;
+                            }
+                        }
+                        if (!pressed)
+                            PC -= 2;
                         break;
                         // Fx15 - LD DT, Vx
                         // Set delay timer = Vx.
@@ -400,7 +414,7 @@ break;
                         // Fx29 - LD F, Vx
                         // Set I = location of sprite for digit Vx.
                     case 0x29:
-                        rI = rV[(opcode & 0x0F00) >> 8] * 0x5;
+                        rI = 80 + rV[(opcode & 0x0F00) >> 8] * 0x5;
                         break;
                         // Fx33 - LD B, Vx
                         // Store BCD representation of Vx in memory locations I, I+1, and I+2.
