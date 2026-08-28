@@ -4,6 +4,15 @@
 <head>
     <title>JsChip8</title>
     <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <style>
+        canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+        .c8keyboard, .keygroup { list-style: none; padding: 0; margin: 0; }
+        .keygroup { display: flex; }
+        .key a { display: block; width: 56px; height: 56px; line-height: 56px; text-align: center;
+                 border: 1px solid #333; text-decoration: none; touch-action: none;
+                 -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    </style>
     <script src="Pixel.js"></script>
     <script src='JsChip8.js'></script>
     <script src='script.js'></script>
@@ -141,11 +150,13 @@
                     null;
 
             function mainloop() {
+                for (var i = 0; i < 10; i++)
+                    chip8.step();
+                chip8.tick();
                 draw({
                     'context': context,
                     'color': ['#333', '#CCC']
                 }, chip8.getDisplay());
-                chip8.step();
             }
 
             canvas.width = 64 * 8;
@@ -171,9 +182,26 @@
 
             }, false);
 
+            var keymap = { Digit1: 0x1, Digit2: 0x2, Digit3: 0x3, Digit4: 0xC,
+                KeyQ: 0x4, KeyW: 0x5, KeyE: 0x6, KeyR: 0xD, KeyA: 0x7, KeyS: 0x8,
+                KeyD: 0x9, KeyF: 0xE, KeyZ: 0xA, KeyX: 0x0, KeyC: 0xB, KeyV: 0xF };
+            document.addEventListener('keydown', function (e) {
+                if (e.code in keymap) chip8.setKey(keymap[e.code], true);
+            }, false);
+            document.addEventListener('keyup', function (e) {
+                if (e.code in keymap) chip8.setKey(keymap[e.code], false);
+            }, false);
 
+            var pad = document.querySelectorAll('.c8keyboard a');
+            for (var i = 0; i < pad.length; i++) (function (a, k) {
+                a.textContent = k.toString(16).toUpperCase();
+                a.addEventListener('pointerdown', function (e) { e.preventDefault(); chip8.setKey(k, true); }, false);
+                a.addEventListener('pointerup', function () { chip8.setKey(k, false); }, false);
+                a.addEventListener('pointerleave', function () { chip8.setKey(k, false); }, false);
+                a.addEventListener('click', function (e) { e.preventDefault(); }, false);
+            })(pad[i], parseInt('123C456D789EA0BF'.charAt(i), 16));
 
-            chip8.loadRom();
+            chip8.loadRom(rom);
 
             if (animFrame !== null) {
                 var recursiveAnim = function () {
